@@ -36,6 +36,7 @@ struct SnmpMonitorApp {
     target_ip: String,
     community: String,
     mib_obj_reciever: Receiver<MibObject>,
+    target_sender: Sender<(SocketAddr, String)>,
     context: MyContext,
     new_plot_window_manager: NewPlotWindowManager,
     tabs_tree: DockState<String>
@@ -196,7 +197,8 @@ impl MyContext {
 #[tokio::main]
 async fn main() {    
     println!("start");
-    let (mib_obj_sender, mib_obj_reciever) = std::sync::mpsc::channel();
+    let (mib_obj_sender, mib_obj_reciever): (Sender<MibObject>, Receiver<MibObject>) = std::sync::mpsc::channel();
+    let (target_sender, target_reciever): (Sender<(SocketAddr, String)>, Receiver<(SocketAddr, String)>) = std::sync::mpsc::channel();
 
 
     let options = eframe::NativeOptions {
@@ -245,6 +247,7 @@ async fn main() {
         target_ip: "127.0.0.1".to_owned(), 
         community: "public".to_owned(), 
         mib_obj_reciever: mib_obj_reciever, 
+        target_sender: target_sender,
         context: context,
         new_plot_window_manager: NewPlotWindowManager { open: false, show: false, value_to_add: None },
         tabs_tree: dock_state,
@@ -283,7 +286,7 @@ async fn main() {
             Some("0.0.0.0:0".parse().unwrap()),
             None,
         ).await;
-        let client = client_res.expect("failed to create SNMP client");
+        let mut client = client_res.expect("failed to create SNMP client");
         println!("start loop");
         
         let log_file_name = format!("MIB-log.log");
@@ -301,6 +304,21 @@ async fn main() {
             println!("loop repeat");
             interval.tick().await;
             
+            match target_reciever.try_recv() {
+                Ok(target) => {
+                    println!("recieved target");
+                    let client_res = Snmp2cClient::new(
+                        target.0,
+                        target.1.as_bytes().to_vec().clone(),
+                        Some("0.0.0.0:0".parse().unwrap()),
+                        None,
+                    ).await;
+                    client = client_res.expect("failed to create SNMP client");
+                    println!("target is now {:?}", target);
+                },
+                Err(_) => {},
+            };
+
             let mut object = MibObject::new();
 
             println!("sending snmp requests");
@@ -358,10 +376,7 @@ impl eframe::App for SnmpMonitorApp {
                     ui.add(egui::TextEdit::singleline(&mut self.community).hint_text("target community string"));
                     if win_dimentions.is_some() {
                         if ui.add(egui::Button::new("change target")).clicked() {
-                            self.context.open_tabs.insert(self.target_ip.clone());
-                            self.tabs_tree.main_surface_mut().push_to_focused_leaf(self.target_ip.clone());
-                            self.context.open_tabs.insert(self.community.clone());
-                            self.tabs_tree.main_surface_mut().push_to_focused_leaf(self.community.clone());
+                            self.target_sender.send((SocketAddr::from_str(&[&self.target_ip, ":161"].concat()).expect("couldnt convert ip to socketaddr"), self.community.to_owned())).expect("error sending target info");
                         }
                     }
                 });

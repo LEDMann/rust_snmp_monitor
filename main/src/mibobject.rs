@@ -850,7 +850,7 @@ pub mod MibModule {
                             header.col(|ui| { ui.strong(&self.ipRouteInfo.as_mvoid().unwrap().name); });
                         })
                         .body(|body| {
-                            body.rows(26.0, self.ipRouteIfIndex.as_mvipv4().unwrap().value.len(), |index, mut row| {
+                            body.rows(26.0, self.ipRouteIfIndex.as_mvinti32().unwrap().value.len(), |index, mut row| {
                                 row.col(|ui| match &self.ipRouteDest.as_mvipv4().unwrap().value.len().cmp(&0) { std::cmp::Ordering::Greater => { ui.label(format!("{:?}", self.ipRouteDest.as_mvipv4().unwrap().value.clone().get(index).unwrap())); }, _ => { ui.spinner(); } });
                                 row.col(|ui| match &self.ipRouteIfIndex.as_mvinti32().unwrap().value.len().cmp(&0) { std::cmp::Ordering::Greater => { ui.label(self.ipRouteIfIndex.as_mvinti32().unwrap().value.clone().get(index).unwrap().to_string()); }, _ => { ui.spinner(); } });
                                 row.col(|ui| match &self.ipRouteMetric1.as_mvinti32().unwrap().value.len().cmp(&0) { std::cmp::Ordering::Greater => { ui.label(self.ipRouteMetric1.as_mvinti32().unwrap().value.clone().get(index).unwrap().to_string()); }, _ => { ui.spinner(); } });
@@ -1214,7 +1214,7 @@ pub mod MibModule {
                             header.col(|ui| { ui.strong(&self.udpLocalPort.as_mvinti32().unwrap().name); });
                         })
                         .body(|body| {
-                            body.rows(26.0, self.udpLocalPort.as_mvipv4().unwrap().value.len(), |index, mut row| {
+                            body.rows(26.0, self.udpLocalPort.as_mvinti32().unwrap().value.len(), |index, mut row| {
                                 row.col(|ui| match &self.udpLocalAddress.as_mvipv4().unwrap().value.len().cmp(&0) { std::cmp::Ordering::Greater => { ui.label(format!("{:?}", self.udpLocalAddress.as_mvipv4().unwrap().value.clone().get(index).unwrap())); }, _ => { ui.spinner(); } });
                                 row.col(|ui| match &self.udpLocalPort.as_mvinti32().unwrap().value.len().cmp(&0) { std::cmp::Ordering::Greater => { ui.label(self.udpLocalPort.as_mvinti32().unwrap().value.clone().get(index).unwrap().to_string()); }, _ => { ui.spinner(); } });
                             });
