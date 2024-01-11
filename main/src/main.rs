@@ -200,6 +200,7 @@ async fn main() {
     let (mib_obj_sender, mib_obj_reciever): (Sender<MibObject>, Receiver<MibObject>) = std::sync::mpsc::channel();
     let (target_sender, target_reciever): (Sender<(SocketAddr, String)>, Receiver<(SocketAddr, String)>) = std::sync::mpsc::channel();
 
+    fs::create_dir_all("/logs").expect("could not create directory");
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_title("SNMP Monitor".to_string()).with_app_id("SNMP_Monitor").with_min_inner_size([854.0,480.0]).with_maximized(false),
@@ -288,17 +289,6 @@ async fn main() {
         ).await;
         let mut client = client_res.expect("failed to create SNMP client");
         println!("start loop");
-        
-        let log_file_name = format!("MIB-log.log");
-
-        let log = OpenOptions::new()
-                                    .read(true)
-                                    .append(true)
-                                    .create(true)
-                                    .open(log_file_name)
-                                    .unwrap();
-
-        let mut log_writer = LineWriter::new(log);
 
         'monitor_loop: loop {
             println!("loop repeat");
@@ -321,13 +311,26 @@ async fn main() {
 
             let mut object = MibObject::new();
 
-            println!("sending snmp requests");
+            println!("sending snmp requests to {:?}", &client.target());
 
             object.walk(&client).await;
             
             println!("got snmp responses");
             
             println!("object size: {}", std::mem::size_of_val(&object));
+
+            let log_file_name = format!("logs/MIB-log-{}.log", str::replace(&client.target().ip().to_string(), ".", "-"));
+
+            println!("{}", log_file_name);
+
+            let log = OpenOptions::new()
+                                        .read(true)
+                                        .append(true)
+                                        .create(true)
+                                        .open(log_file_name)
+                                        .unwrap();
+    
+            let mut log_writer = LineWriter::new(log);
 
             log_writer.write_all([serde_json::to_string(&object).unwrap(), "\n".to_owned()].concat().as_bytes()).unwrap();
 
@@ -401,8 +404,11 @@ impl eframe::App for SnmpMonitorApp {
                             self.tabs_tree
                                 .main_surface_mut()
                                 .push_to_focused_leaf(self.context.new_plot_name.clone());
-    
-                            let snmp_log: Vec<MibObject> = BufReader::new(File::open(format!("MIB-log.log")).unwrap())
+                            
+                            let file_path = format!("logs/MIB-log-{}.log", str::replace(&self.target_ip, ".", "-"));
+                            println!("{}", file_path);
+
+                            let snmp_log: Vec<MibObject> = BufReader::new(File::open(file_path).unwrap())
                                                                         .lines()
                                                                         .map(|line| line.unwrap())
                                                                         .filter(|line| line != "")

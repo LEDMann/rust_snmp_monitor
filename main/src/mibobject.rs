@@ -2501,36 +2501,24 @@ pub mod MibModule {
         }
         async fn walk(&mut self, client: &Snmp2cClient) -> Option<String> {
             match self {
-                MibValue::string(mvstring {
-                    name,
-                    oid,
-                    mutable,
-                    value,
-                }) => {
+                MibValue::string(mvstring {name, oid, mutable, value }) => {
                     match ObjectIdentifier::from_str(&oid.clone().into_iter().map(|a| a.to_string()).collect::<Vec<String>>().join(".").to_owned()) {
                         Ok(res) => {
                             match client.walk_bulk(res, 100).await {
                                 Ok(res) => {
-                                    *value = res
-                                        .into_iter()
-                                        .map(|a| match a.1.as_bytes() {
+                                    *value = res.into_iter().map(|a| match a.1.as_bytes() {
                                             Some(res) => match String::from_utf8(res.to_owned()) {
                                                 Ok(res) => res,
                                                 Err(_) => "err".to_owned(),
                                             },
                                             None => "err".to_owned(),
-                                        })
-                                        .collect::<Vec<String>>();
+                                        }).collect::<Vec<String>>();
                                     return None;
                                 }
-                                Err(_) => {
-                                    return Some("error completing snmp walk".to_owned());
-                                }
+                                Err(_) => return Some("error completing snmp walk".to_owned())
                             };
                         }
-                        Err(_) => {
-                            return Some("error creating oid from string".to_owned());
-                        }
+                        Err(_) => return Some("error creating oid from string".to_owned())
                     };
                 }
                 MibValue::inti32(mvinti32 {
